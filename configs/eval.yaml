@@ -1,0 +1,8 @@
+dataset:
+  target_samples: 120
+  test_ratio: 0.3
+
+metrics:
+  semantic_score_max: 2
+  high_risk_escalation_action: emergency_escalation
+

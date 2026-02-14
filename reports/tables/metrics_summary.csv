@@ -1,0 +1,3 @@
+model_variant,num_samples,semantic_score_mean,semantic_pass_rate,key_fact_coverage_mean,unsafe_advice_rate,high_risk_miss_rate,escalation_compliance_rate,safety_note_compliance_rate,citation_sufficiency_rate,unsupported_claim_rate,overconfidence_rate,abstention_appropriateness_rate,top_error_type
+baseline,120,1.0667,0.8333,0.2140,0.1333,0.1333,0.8667,0.3917,0.1833,0.0000,0.5250,1.0000,incomplete_guidance
+enhanced,120,1.4167,1.0000,0.3380,0.0000,0.0000,1.0000,1.0000,0.4167,0.0000,0.0000,1.0000,incomplete_guidance

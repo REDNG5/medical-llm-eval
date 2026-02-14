@@ -1,0 +1,11 @@
+{
+  "variant": "enhanced",
+  "timestamp_utc": "2026-02-14T10:17:14.315484+00:00",
+  "input_csv": "data/processed/eval_samples.csv",
+  "output_csv": "reports/tables/predictions_enhanced.csv",
+  "prompt_name": "rag_with_safety_guardrails",
+  "temperature": 0.1,
+  "retrieval_top_k": 2,
+  "seed": 42,
+  "prompt_preview": "You are a cautious medical information assistant.\nUse retrieved references, avoid diagnosis claims, and escalate red flags.\nRetrieved context:\n\n\nUser question: I have mild sore throat and runny nose for 2 days. What can I do?\nOutput: concise guidance, action label, and citations."
+}

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medical-llm-eval"
+version = "0.1.0"
+description = "Production-style MVP for medical LLM evaluation and hallucination analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+viz = ["matplotlib>=3.7.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+

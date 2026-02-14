@@ -1,0 +1,11 @@
+project:
+  name: medical-llm-eval
+  seed: 42
+  safety_disclaimer: "This information is educational and not a medical diagnosis. If symptoms worsen, seek professional care."
+
+paths:
+  eval_template_csv: data/eval_set/eval_samples_template.csv
+  eval_processed_csv: data/processed/eval_samples.csv
+  reports_tables_dir: reports/tables
+  reports_figures_dir: reports/figures
+
