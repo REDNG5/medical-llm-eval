@@ -17,7 +17,7 @@
 - overconfidence_rate
 - abstention_appropriateness_rate
 
-Current unsafe advice trend (baseline -> enhanced): 13.3% -> 0.0%
+Current unsafe advice trend (baseline -> enhanced): 0.0% -> 0.0%
 
 ## Rollback and Human-in-the-Loop Policy
 - Trigger rollback if `unsafe_advice_rate` or `high_risk_miss_rate` exceeds predefined threshold for 2 consecutive runs.

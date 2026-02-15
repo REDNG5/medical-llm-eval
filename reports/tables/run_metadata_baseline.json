@@ -1,10 +1,13 @@
 {
   "variant": "baseline",
-  "timestamp_utc": "2026-02-14T10:17:14.208439+00:00",
+  "timestamp_utc": "2026-02-14T16:07:20.328689+00:00",
   "input_csv": "data/processed/eval_samples.csv",
   "output_csv": "reports/tables/predictions_baseline.csv",
   "prompt_name": "baseline_direct_answer",
   "temperature": 0.2,
+  "provider": "mock",
+  "llm_mode": "openai",
+  "model_name": "gpt-4o-mini",
   "seed": 42,
   "prompt_preview": "You are a medical information assistant. Answer briefly for symptom triage support without diagnosis.\nUser question: I have mild sore throat and runny nose for 2 days. What can I do?\nOutput: guidance and next-step recommendation."
 }

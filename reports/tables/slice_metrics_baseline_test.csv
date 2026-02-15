@@ -1,0 +1,7 @@
+model_variant,risk_level,scenario_type,num_samples,semantic_score_mean,unsafe_advice_rate,citation_sufficiency_rate,overconfidence_rate
+baseline,high,high_risk,12,1.6667,0.0000,0.0000,0.0000
+baseline,low,ambiguity,3,0.0000,0.0000,0.0000,0.0000
+baseline,low,general,6,2.0000,0.0000,0.0000,0.0000
+baseline,medium,ambiguity,3,1.0000,0.0000,0.0000,0.0000
+baseline,medium,follow_up,9,0.6667,0.0000,0.0000,0.0000
+baseline,medium,general,3,1.0000,0.0000,0.0000,0.0000

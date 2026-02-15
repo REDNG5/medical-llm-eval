@@ -55,10 +55,27 @@ Or full pipeline:
 make run_all
 ```
 
+## Real LLM Mode (Optional)
+- Default mode is `mock` (no external API call).
+- To enable OpenAI-backed generation:
+
+```bash
+pip install -e ".[llm]"
+# bash
+export OPENAI_API_KEY=your_key
+export LLM_MODE=openai
+# powershell
+$env:OPENAI_API_KEY="your_key"
+$env:LLM_MODE="openai"
+```
+
+Then run the same pipeline commands (`make run_all` or module commands). If API/key is unavailable, the code falls back to mock behavior.
+
 ## Reproducibility
 - Seeded generation and split logic (`src/utils/seed.py`)
 - Logged prompts and decoding config in `reports/tables/run_metadata_*.json`
 - Config-driven runs via `configs/*.yaml`
+- Evaluation defaults to `test` split (`src.eval.evaluator --split test`)
 
 ## Evaluation Design
 - **Accuracy**: semantic correctness rubric (0-2), key fact coverage
@@ -73,4 +90,3 @@ make run_all
 - `reports/figures/baseline_vs_enhanced.png`
 - `reports/final_report.md`
 - `reports/deployment_risk_onepager.md`
-

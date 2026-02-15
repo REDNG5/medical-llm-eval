@@ -13,8 +13,8 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
 viz = ["matplotlib>=3.7.0"]
+llm = ["openai>=1.40.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
-

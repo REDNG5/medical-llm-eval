@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import datetime, timezone
 
+from src.llm.inference_common import (
+    estimate_confidence,
+    infer_action_from_query,
+    sanitize_infer_input,
+)
 from src.llm.prompts import rag_prompt
+from src.llm.provider_client import (
+    build_structured_output_instructions,
+    generate_structured_with_fallback,
+)
 from src.llm.safety_rules import apply_safety_rules
 from src.utils.io import load_yaml, read_csv, write_csv, write_json
 from src.utils.logging import get_logger
@@ -75,15 +85,8 @@ def retrieve_context(query: str, top_k: int = 2) -> list[dict[str, str]]:
 
 
 def _predict_action(row: dict[str, str], retrieved: list[dict[str, str]]) -> str:
-    if row.get("risk_level") == "high":
-        return "emergency_escalation"
-    if row.get("scenario_type") == "ambiguity":
-        return "abstain"
-    if row.get("risk_level") == "medium":
-        return "advise_visit"
-    if retrieved:
-        return "inform"
-    return row.get("expected_action", "inform")
+    query = row.get("user_query", "")
+    return infer_action_from_query(query, has_retrieval_support=bool(retrieved))
 
 
 def _draft_response(row: dict[str, str], retrieved: list[dict[str, str]], action: str) -> str:
@@ -107,6 +110,11 @@ def _draft_response(row: dict[str, str], retrieved: list[dict[str, str]], action
     return f"Based on available guidance, supportive care and monitoring are reasonable. {refs} Query: {query}"
 
 
+def _build_generation_prompt(query: str, retrieved: list[dict[str, str]]) -> str:
+    context = "\n".join(f"[{r['id']}] {r['snippet']}" for r in retrieved)
+    return f"{rag_prompt(query, context)}\n\n{build_structured_output_instructions()}"
+
+
 def run_enhanced(
     input_csv: str,
     output_csv: str,
@@ -122,21 +130,40 @@ def run_enhanced(
     prompt_name = str(model_cfg.get("prompt_name", "rag_with_safety_guardrails"))
     temperature = float(model_cfg.get("temperature", 0.1))
     top_k = int(model_cfg.get("retrieval_top_k", 2))
+    llm_mode = os.getenv("LLM_MODE", str(model_cfg.get("llm_mode", "mock")))
+    provider = str(model_cfg.get("provider", "mock"))
 
     outputs: list[dict[str, str]] = []
     for row in rows:
-        query = row.get("user_query", "")
+        infer_row = sanitize_infer_input(row)
+        query = infer_row.get("user_query", "")
         retrieved = retrieve_context(query, top_k=top_k)
-        action = _predict_action(row, retrieved)
-        draft = _draft_response(row, retrieved, action)
+        action = _predict_action(infer_row, retrieved)
+        draft = _draft_response(infer_row, retrieved, action)
+        prompt = _build_generation_prompt(query, retrieved)
+        default_citations = [r["id"] for r in retrieved]
+        default_confidence = estimate_confidence(
+            query=query,
+            action=action,
+            response_text=draft,
+            citations_count=len(default_citations),
+        )
+        llm_out = generate_structured_with_fallback(
+            prompt=prompt,
+            model_cfg=model_cfg,
+            default_action=action,
+            default_answer=draft,
+            default_citations=default_citations,
+            default_confidence=default_confidence,
+        )
         guarded = apply_safety_rules(
             user_query=query,
-            risk_level=row.get("risk_level", "low"),
-            required_safety_note=row.get("required_safety_note", "false"),
-            response_text=draft,
-            predicted_action=action,
+            response_text=llm_out.response_text,
+            predicted_action=llm_out.predicted_action,
+            require_disclaimer=True,
         )
-        citations = ";".join(r["id"] for r in retrieved)
+        citations = ";".join(llm_out.citations)
+        confidence = llm_out.confidence
         outputs.append(
             {
                 "sample_id": row.get("sample_id", ""),
@@ -144,7 +171,7 @@ def run_enhanced(
                 "response_text": guarded["response_text"],
                 "predicted_action": guarded["predicted_action"],
                 "citations": citations,
-                "confidence": "0.72",
+                "confidence": f"{confidence:.2f}",
                 "has_safety_note": guarded["has_safety_note"],
                 "prompt_name": prompt_name,
                 "temperature": f"{temperature:.2f}",
@@ -167,6 +194,9 @@ def run_enhanced(
             "output_csv": output_csv,
             "prompt_name": prompt_name,
             "temperature": temperature,
+            "provider": provider,
+            "llm_mode": llm_mode,
+            "model_name": str(model_cfg.get("model_name", "")),
             "retrieval_top_k": top_k,
             "seed": seed,
             "prompt_preview": prompt_preview,
@@ -194,4 +224,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

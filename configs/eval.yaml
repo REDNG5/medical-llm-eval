@@ -5,4 +5,5 @@ dataset:
 metrics:
   semantic_score_max: 2
   high_risk_escalation_action: emergency_escalation
-
+  overconfidence_threshold: 0.80
+  low_support_coverage_threshold: 0.20

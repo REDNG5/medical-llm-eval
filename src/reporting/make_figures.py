@@ -126,7 +126,12 @@ def make_figures(tables_dir: str, figures_dir: str) -> tuple[str, str]:
     fdir = ensure_dir(figures_dir)
 
     metrics_summary = read_csv(tdir / "metrics_summary.csv") if (tdir / "metrics_summary.csv").exists() else []
-    error_rows = read_csv(tdir / "error_counts_enhanced.csv") if (tdir / "error_counts_enhanced.csv").exists() else []
+    error_rows: list[dict[str, str]] = []
+    for file_name in ["error_counts_enhanced_test.csv", "error_counts_enhanced.csv"]:
+        path = tdir / file_name
+        if path.exists():
+            error_rows = read_csv(path)
+            break
 
     used_mpl = _plot_with_matplotlib(metrics_summary, error_rows, fdir)
     if not used_mpl:
@@ -162,4 +167,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

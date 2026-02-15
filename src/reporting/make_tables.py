@@ -13,10 +13,16 @@ def make_tables(tables_dir: str) -> tuple[str, str]:
     tdir = ensure_dir(tables_dir)
 
     metrics_rows: list[dict[str, str]] = []
-    for file_name in ["metrics_baseline.csv", "metrics_enhanced.csv"]:
-        path = tdir / file_name
-        if path.exists():
-            metrics_rows.extend(read_csv(path))
+    metric_candidates = [
+        ["metrics_baseline_test.csv", "metrics_baseline.csv"],
+        ["metrics_enhanced_test.csv", "metrics_enhanced.csv"],
+    ]
+    for candidates in metric_candidates:
+        for file_name in candidates:
+            path = tdir / file_name
+            if path.exists():
+                metrics_rows.extend(read_csv(path))
+                break
 
     metrics_summary_path = str(tdir / "metrics_summary.csv")
     if metrics_rows:
@@ -24,10 +30,16 @@ def make_tables(tables_dir: str) -> tuple[str, str]:
         write_csv(metrics_summary_path, metrics_rows, metric_fields)
 
     slice_rows: list[dict[str, str]] = []
-    for file_name in ["slice_metrics_baseline.csv", "slice_metrics_enhanced.csv"]:
-        path = tdir / file_name
-        if path.exists():
-            slice_rows.extend(read_csv(path))
+    slice_candidates = [
+        ["slice_metrics_baseline_test.csv", "slice_metrics_baseline.csv"],
+        ["slice_metrics_enhanced_test.csv", "slice_metrics_enhanced.csv"],
+    ]
+    for candidates in slice_candidates:
+        for file_name in candidates:
+            path = tdir / file_name
+            if path.exists():
+                slice_rows.extend(read_csv(path))
+                break
 
     slice_summary_path = str(tdir / "slice_metrics.csv")
     if slice_rows:
@@ -48,4 +60,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

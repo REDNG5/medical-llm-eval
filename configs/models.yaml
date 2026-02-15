@@ -1,13 +1,18 @@
 baseline:
   name: baseline_direct
+  llm_mode: mock
+  provider: mock
+  model_name: gpt-4o-mini
   prompt_name: baseline_direct_answer
   temperature: 0.2
   max_tokens: 300
 
 enhanced:
   name: enhanced_rag_guardrail
+  llm_mode: mock
+  provider: mock
+  model_name: gpt-4o-mini
   prompt_name: rag_with_safety_guardrails
   temperature: 0.1
   max_tokens: 350
   retrieval_top_k: 2
-

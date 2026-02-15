@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
+import os
 from datetime import datetime, timezone
 
+from src.llm.inference_common import (
+    estimate_confidence,
+    infer_action_from_query,
+    sanitize_infer_input,
+)
 from src.llm.prompts import baseline_prompt
-from src.utils.io import load_yaml, parse_bool, read_csv, write_csv, write_json
+from src.llm.provider_client import (
+    build_structured_output_instructions,
+    generate_structured_with_fallback,
+)
+from src.llm.safety_rules import apply_safety_rules
+from src.utils.io import load_yaml, read_csv, write_csv, write_json
 from src.utils.logging import get_logger
 from src.utils.seed import set_seed
 
@@ -24,32 +34,14 @@ PREDICTION_COLUMNS = [
 ]
 
 
-def _hash_to_percent(value: str) -> int:
-    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
-    return int(digest, 16) % 100
+def _predict_action_baseline(infer_row: dict[str, str]) -> str:
+    """Predict action using query-only signals."""
+    query = infer_row.get("user_query", "")
+    return infer_action_from_query(query, has_retrieval_support=False)
 
 
-def _predict_action_baseline(row: dict[str, str]) -> str:
-    risk = row.get("risk_level", "low")
-    scenario = row.get("scenario_type", "general")
-    sample_id = row.get("sample_id", "")
-    pct = _hash_to_percent(sample_id)
-
-    if risk == "high":
-        return "advise_visit" if pct < 35 else "emergency_escalation"
-    if scenario == "ambiguity" and pct < 20:
-        return "abstain"
-    if risk == "medium":
-        return "advise_visit"
-    return "inform"
-
-
-def _generate_response(row: dict[str, str], action: str) -> tuple[str, str, str]:
-    query = row.get("user_query", "")
-    source_ref = row.get("source_reference", "")
-    safety_note_required = parse_bool(row.get("required_safety_note", "false"))
-    sample_id = row.get("sample_id", "")
-    pct = _hash_to_percent(sample_id)
+def _generate_response(infer_row: dict[str, str], action: str) -> str:
+    query = infer_row.get("user_query", "")
 
     if action == "emergency_escalation":
         text = (
@@ -60,18 +52,19 @@ def _generate_response(row: dict[str, str], action: str) -> tuple[str, str, str]
         text = (
             f"This may need a clinician review soon. For now, monitor symptoms and arrange a visit."
         )
-        if pct < 25:
-            text += " It is probably not serious."
     elif action == "abstain":
         text = "I do not have enough details to give safe guidance. Please share more specifics."
     else:
         text = "This appears mild. Rest, hydration, and symptom monitoring are reasonable first steps."
-        if pct < 20:
-            text += " You are definitely fine."
 
-    citations = source_ref if pct < 15 else ""
-    has_safety_note = "true" if (safety_note_required and pct < 20) else "false"
-    return text, citations, has_safety_note
+    return text
+
+
+def _build_generation_prompt(query: str) -> str:
+    return (
+        f"{baseline_prompt(query)}\n\n"
+        f"{build_structured_output_instructions()}"
+    )
 
 
 def run_baseline(
@@ -88,20 +81,46 @@ def run_baseline(
     model_cfg = load_yaml(models_config).get("baseline", {})
     prompt_name = str(model_cfg.get("prompt_name", "baseline_direct_answer"))
     temperature = float(model_cfg.get("temperature", 0.2))
+    llm_mode = os.getenv("LLM_MODE", str(model_cfg.get("llm_mode", "mock")))
+    provider = str(model_cfg.get("provider", "mock"))
 
     outputs: list[dict[str, str]] = []
     for row in rows:
-        action = _predict_action_baseline(row)
-        response_text, citations, has_safety_note = _generate_response(row, action)
+        infer_row = sanitize_infer_input(row)
+        action = _predict_action_baseline(infer_row)
+        response_text = _generate_response(infer_row, action)
+        default_confidence = estimate_confidence(
+            query=infer_row.get("user_query", ""),
+            action=action,
+            response_text=response_text,
+            citations_count=0,
+        )
+        prompt = _build_generation_prompt(infer_row.get("user_query", ""))
+        llm_out = generate_structured_with_fallback(
+            prompt=prompt,
+            model_cfg=model_cfg,
+            default_action=action,
+            default_answer=response_text,
+            default_citations=[],
+            default_confidence=default_confidence,
+        )
+        guarded = apply_safety_rules(
+            user_query=infer_row.get("user_query", ""),
+            response_text=llm_out.response_text,
+            predicted_action=llm_out.predicted_action,
+            require_disclaimer=True,
+        )
+        citations = ";".join(llm_out.citations)
+        confidence = llm_out.confidence
         outputs.append(
             {
                 "sample_id": row.get("sample_id", ""),
                 "model_variant": "baseline",
-                "response_text": response_text,
-                "predicted_action": action,
+                "response_text": guarded["response_text"],
+                "predicted_action": guarded["predicted_action"],
                 "citations": citations,
-                "confidence": "0.90",
-                "has_safety_note": has_safety_note,
+                "confidence": f"{confidence:.2f}",
+                "has_safety_note": guarded["has_safety_note"],
                 "prompt_name": prompt_name,
                 "temperature": f"{temperature:.2f}",
             }
@@ -122,6 +141,9 @@ def run_baseline(
             "output_csv": output_csv,
             "prompt_name": prompt_name,
             "temperature": temperature,
+            "provider": provider,
+            "llm_mode": llm_mode,
+            "model_name": str(model_cfg.get("model_name", "")),
             "seed": seed,
             "prompt_preview": prompt_preview,
         },
@@ -148,4 +170,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

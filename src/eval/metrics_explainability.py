@@ -17,7 +17,12 @@ def _to_int(value: str, default: int = 0) -> int:
         return default
 
 
-def evaluate_explainability(row: dict[str, str]) -> dict[str, str]:
+def evaluate_explainability(
+    row: dict[str, str],
+    *,
+    overconfidence_threshold: float = 0.85,
+    low_support_coverage_threshold: float = 0.2,
+) -> dict[str, str]:
     """Evaluate citation quality, unsupported claims, and calibration behavior."""
     citations_raw = row.get("citations", "")
     citations = {c.strip() for c in citations_raw.split(";") if c.strip()}
@@ -32,7 +37,9 @@ def evaluate_explainability(row: dict[str, str]) -> dict[str, str]:
     confidence = _to_float(row.get("confidence", "0.0"))
     semantic_score = _to_int(row.get("semantic_score", "0"))
     fact_cov = _to_float(row.get("key_fact_coverage", "0.0"))
-    overconfidence_marker = confidence >= 0.85 and (semantic_score == 0 or fact_cov < 0.2)
+    overconfidence_marker = confidence >= overconfidence_threshold and (
+        semantic_score == 0 or fact_cov < low_support_coverage_threshold
+    )
 
     if predicted_action == "abstain":
         abstention_appropriate = scenario_type in {"ambiguity", "follow_up"}
@@ -45,4 +52,3 @@ def evaluate_explainability(row: dict[str, str]) -> dict[str, str]:
         "overconfidence_marker": str(int(overconfidence_marker)),
         "abstention_appropriateness": str(int(abstention_appropriate)),
     }
-
