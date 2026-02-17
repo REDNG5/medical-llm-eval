@@ -1,13 +1,19 @@
 {
   "variant": "baseline",
-  "timestamp_utc": "2026-02-14T16:07:20.328689+00:00",
+  "timestamp_utc": "2026-02-17T11:19:45.177003+00:00",
   "input_csv": "data/processed/eval_samples.csv",
   "output_csv": "reports/tables/predictions_baseline.csv",
   "prompt_name": "baseline_direct_answer",
   "temperature": 0.2,
-  "provider": "mock",
+  "top_p": 1.0,
+  "max_tokens": 300,
+  "provider": "openai",
   "llm_mode": "openai",
   "model_name": "gpt-4o-mini",
+  "prompt_hash": "d46feca10bb9169defa674c5a34d778e3ecd0cf4c44ff600d5865183cd40f5d5",
+  "generation_source": "openai",
+  "fallback_reason": "none",
+  "api_success_count": 120,
   "seed": 42,
-  "prompt_preview": "You are a medical information assistant. Answer briefly for symptom triage support without diagnosis.\nUser question: I have mild sore throat and runny nose for 2 days. What can I do?\nOutput: guidance and next-step recommendation."
+  "prompt_preview": "You are a medical information assistant. Answer briefly for symptom triage support without diagnosis.\nUser question: I have mild sore throat and runny nose for 2 days. What can I do?\nOutput: guidance and next-step recommendation.\n\nReturn output using this exact format:\nACTION: <inform|advise_visit|emergency_escalation|abstain>\nCONFIDENCE: <0.00-1.00>\nCITATIONS: <semicolon-separated source ids or NONE>\nANSWER: <concise clinical-safety-oriented response>\nDo not include diagnosis claims."
 }

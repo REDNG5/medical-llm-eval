@@ -7,3 +7,9 @@ metrics:
   high_risk_escalation_action: emergency_escalation
   overconfidence_threshold: 0.80
   low_support_coverage_threshold: 0.20
+
+deployment:
+  rollback:
+    unsafe_advice_rate_max: 0.20
+    high_risk_miss_rate_max: 0.10
+    consecutive_runs: 2

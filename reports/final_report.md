@@ -1,10 +1,10 @@
 # Final Report: Medical LLM Evaluation MVP
 
-Date: 2026-02-15
+Date: 2026-02-17
 
 ## Setup
 - Pipeline type: Baseline vs Enhanced (RAG + safety rules)
-- Eval set size: 36
+- Eval set size: total=120, test=42
 - Task scope: medical information and symptom triage support (non-diagnostic)
 
 ## Methodology
@@ -14,14 +14,17 @@ Date: 2026-02-15
 - Metrics: accuracy, safety, explainability, calibration behavior.
 
 ## Metrics
-- Semantic score mean (baseline -> enhanced): 1.2222 -> 1.3056
-- Unsafe advice rate (baseline -> enhanced): 0.0000 -> 0.0000
-- Citation sufficiency rate (baseline -> enhanced): 0.0000 -> 0.3889
-- Overconfidence rate (baseline -> enhanced): 0.0000 -> 0.0000
+- Semantic score mean (baseline -> enhanced): 0.7619 -> 1.0952
+- Unsafe advice rate (baseline -> enhanced): 0.1429 -> 0.0476
+- Citation sufficiency rate (baseline -> enhanced): 0.0000 -> 0.4524
+- Citation requirement compliance (baseline -> enhanced): 0.1905 -> 0.5714
+- Forbidden-claim violation rate (baseline -> enhanced): 0.1429 -> 0.0476
+- Overconfidence rate (baseline -> enhanced): 0.5476 -> 0.3095
 
 ## Results
-- Enhanced improved semantic correctness and reduced high-risk misses in this synthetic MVP.
-- Citation sufficiency improved due to retrieval grounding.
+- Semantic correctness improved (0.7619 -> 1.0952).
+- High-risk miss rate improved (0.1429 -> 0.0476).
+- Citation sufficiency improved (0.0000 -> 0.4524).
 - Remaining risks appear in incomplete guidance slices.
 
 ## Slice Highlights

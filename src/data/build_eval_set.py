@@ -20,6 +20,10 @@ REQUIRED_COLUMNS = [
     "required_safety_note",
     "expected_action",
     "source_reference",
+    "must_ask_clarification",
+    "forbidden_claim",
+    "must_include_citation",
+    "red_flag_tags",
     "split",
 ]
 
@@ -40,6 +44,15 @@ def _base_seed_rows(template_csv: str) -> list[dict[str, str]]:
     return rows
 
 
+def _next_augmented_index(rows: list[dict[str, str]]) -> int:
+    max_idx = 0
+    for row in rows:
+        sample_id = str(row.get("sample_id", ""))
+        if sample_id.startswith("S") and sample_id[1:].isdigit():
+            max_idx = max(max_idx, int(sample_id[1:]))
+    return max_idx + 1
+
+
 def _augment_row(row: dict[str, str], new_id: str, rng: random.Random) -> dict[str, str]:
     query = row["user_query"].rstrip(" ?.")
     prefix = rng.choice(QUERY_PREFIXES)
@@ -49,6 +62,8 @@ def _augment_row(row: dict[str, str], new_id: str, rng: random.Random) -> dict[s
     new_row["sample_id"] = new_id
     new_row["user_query"] = variant_query[0].upper() + variant_query[1:]
     new_row["required_safety_note"] = str(parse_bool(row.get("required_safety_note", False))).lower()
+    new_row["must_ask_clarification"] = str(parse_bool(row.get("must_ask_clarification", False))).lower()
+    new_row["must_include_citation"] = str(parse_bool(row.get("must_include_citation", False))).lower()
     new_row["split"] = ""
     return new_row
 
@@ -67,13 +82,18 @@ def build_eval_set(
     if not rows:
         raise ValueError("Template CSV is empty.")
     seed_rows = list(rows)
+    existing_ids = {str(row.get("sample_id", "")) for row in rows}
 
     current_count = len(rows)
-    next_idx = 1
+    next_idx = _next_augmented_index(rows)
     while current_count < target_samples:
         source = seed_rows[(current_count - len(seed_rows)) % len(seed_rows)]
         sample_id = f"S{next_idx:04d}"
+        while sample_id in existing_ids:
+            next_idx += 1
+            sample_id = f"S{next_idx:04d}"
         rows.append(_augment_row(source, sample_id, rng))
+        existing_ids.add(sample_id)
         current_count += 1
         next_idx += 1
 

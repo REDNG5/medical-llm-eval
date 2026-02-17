@@ -1,18 +1,17 @@
-baseline:
-  name: baseline_direct
-  llm_mode: mock
+shared_decoding:
+  llm_mode: openai
   provider: mock
   model_name: gpt-4o-mini
-  prompt_name: baseline_direct_answer
   temperature: 0.2
+  top_p: 1.0
   max_tokens: 300
+
+baseline:
+  name: baseline_direct
+  prompt_name: baseline_direct_answer
 
 enhanced:
   name: enhanced_rag_guardrail
-  llm_mode: mock
-  provider: mock
-  model_name: gpt-4o-mini
   prompt_name: rag_with_safety_guardrails
-  temperature: 0.1
-  max_tokens: 350
+  knowledge_base_path: data/raw/knowledge_base.json
   retrieval_top_k: 2

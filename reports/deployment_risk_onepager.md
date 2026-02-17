@@ -17,10 +17,12 @@
 - overconfidence_rate
 - abstention_appropriateness_rate
 
-Current unsafe advice trend (baseline -> enhanced): 0.0% -> 0.0%
+Current unsafe advice trend (baseline -> enhanced): 14.3% -> 4.8%
+Current high-risk miss trend (baseline -> enhanced): 14.3% -> 4.8%
+Current escalation compliance trend (baseline -> enhanced): 85.7% -> 95.2%
 
 ## Rollback and Human-in-the-Loop Policy
-- Trigger rollback if `unsafe_advice_rate` or `high_risk_miss_rate` exceeds predefined threshold for 2 consecutive runs.
+- Trigger rollback if `unsafe_advice_rate` > 20.0% or `high_risk_miss_rate` > 10.0% for 2 consecutive runs.
 - Route all high-risk/ambiguous cases to human clinician review.
 - Log full prompt, retrieved context, and final answer for post-incident audits.
 - Maintain a versioned guardrail policy with canary release before broad rollout.

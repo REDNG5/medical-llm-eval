@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
+from collections import Counter
 from datetime import datetime, timezone
 
 from src.llm.inference_common import (
@@ -78,13 +80,20 @@ def run_baseline(
     set_seed(seed)
     logger = get_logger("baseline_infer")
     rows = read_csv(input_csv)
-    model_cfg = load_yaml(models_config).get("baseline", {})
+    all_cfg = load_yaml(models_config)
+    shared_cfg = all_cfg.get("shared_decoding", {})
+    model_cfg = {**shared_cfg, **all_cfg.get("baseline", {})}
     prompt_name = str(model_cfg.get("prompt_name", "baseline_direct_answer"))
     temperature = float(model_cfg.get("temperature", 0.2))
+    top_p = float(model_cfg.get("top_p", 1.0))
+    max_tokens = int(model_cfg.get("max_tokens", 300))
     llm_mode = os.getenv("LLM_MODE", str(model_cfg.get("llm_mode", "mock")))
-    provider = str(model_cfg.get("provider", "mock"))
+    provider = "openai" if llm_mode.lower() == "openai" else str(model_cfg.get("provider", "mock"))
 
     outputs: list[dict[str, str]] = []
+    generation_sources: Counter[str] = Counter()
+    fallback_reasons: Counter[str] = Counter()
+    api_success_count = 0
     for row in rows:
         infer_row = sanitize_infer_input(row)
         action = _predict_action_baseline(infer_row)
@@ -104,6 +113,11 @@ def run_baseline(
             default_citations=[],
             default_confidence=default_confidence,
         )
+        generation_sources[llm_out.generation_source] += 1
+        if llm_out.fallback_reason != "none":
+            fallback_reasons[llm_out.fallback_reason] += 1
+        if llm_out.api_success:
+            api_success_count += 1
         guarded = apply_safety_rules(
             user_query=infer_row.get("user_query", ""),
             response_text=llm_out.response_text,
@@ -128,9 +142,21 @@ def run_baseline(
 
     write_csv(output_csv, outputs, PREDICTION_COLUMNS)
     if rows:
-        prompt_preview = baseline_prompt(rows[0].get("user_query", ""))
+        prompt_preview = _build_generation_prompt(rows[0].get("user_query", ""))
     else:
-        prompt_preview = baseline_prompt("")
+        prompt_preview = _build_generation_prompt("")
+    prompt_hash = hashlib.sha256(prompt_preview.encode("utf-8")).hexdigest()
+    if not generation_sources:
+        generation_source = "none"
+    elif len(generation_sources) == 1:
+        generation_source = next(iter(generation_sources))
+    else:
+        generation_source = "mixed"
+    fallback_reason = (
+        "none"
+        if not fallback_reasons
+        else ";".join(f"{k}:{v}" for k, v in sorted(fallback_reasons.items()))
+    )
 
     write_json(
         metadata_out,
@@ -141,9 +167,15 @@ def run_baseline(
             "output_csv": output_csv,
             "prompt_name": prompt_name,
             "temperature": temperature,
+            "top_p": top_p,
+            "max_tokens": max_tokens,
             "provider": provider,
             "llm_mode": llm_mode,
             "model_name": str(model_cfg.get("model_name", "")),
+            "prompt_hash": prompt_hash,
+            "generation_source": generation_source,
+            "fallback_reason": fallback_reason,
+            "api_success_count": api_success_count,
             "seed": seed,
             "prompt_preview": prompt_preview,
         },

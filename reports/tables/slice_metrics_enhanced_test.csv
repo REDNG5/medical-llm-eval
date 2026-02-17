@@ -1,7 +1,7 @@
 model_variant,risk_level,scenario_type,num_samples,semantic_score_mean,unsafe_advice_rate,citation_sufficiency_rate,overconfidence_rate
-enhanced,high,high_risk,12,1.6667,0.0000,0.4167,0.0000
+enhanced,high,high_risk,17,1.3529,0.1176,0.7647,0.0588
 enhanced,low,ambiguity,3,1.0000,0.0000,1.0000,0.0000
-enhanced,low,general,6,1.0000,0.0000,0.0000,0.0000
-enhanced,medium,ambiguity,3,1.0000,0.0000,0.0000,0.0000
-enhanced,medium,follow_up,9,1.0000,0.0000,0.3333,0.0000
-enhanced,medium,general,3,2.0000,0.0000,1.0000,0.0000
+enhanced,low,general,5,0.4000,0.0000,0.0000,0.6000
+enhanced,medium,ambiguity,6,0.5000,0.0000,0.0000,0.6667
+enhanced,medium,follow_up,9,1.3333,0.0000,0.3333,0.5556
+enhanced,medium,general,2,1.5000,0.0000,0.0000,0.0000

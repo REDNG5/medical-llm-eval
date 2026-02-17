@@ -44,12 +44,35 @@ class TestMetrics(unittest.TestCase):
             "confidence": "0.95",
             "semantic_score": "0",
             "key_fact_coverage": "0.0",
+            "must_include_citation": "true",
+            "must_ask_clarification": "false",
+            "forbidden_claim": "false_reassurance",
         }
         result = evaluate_explainability(row)
         self.assertEqual(result["unsupported_claim"], "1")
         self.assertEqual(result["overconfidence_marker"], "1")
+        self.assertEqual(result["citation_requirement_compliance"], "0")
+        self.assertEqual(result["forbidden_claim_violation"], "1")
+
+    def test_clarification_and_fabricated_citation(self) -> None:
+        row = {
+            "citations": "FAKE-001",
+            "source_reference": "REAL-123",
+            "response_text": "Not enough context. Can you clarify symptom duration?",
+            "predicted_action": "abstain",
+            "scenario_type": "ambiguity",
+            "confidence": "0.52",
+            "semantic_score": "1",
+            "key_fact_coverage": "0.3",
+            "must_include_citation": "false",
+            "must_ask_clarification": "true",
+            "forbidden_claim": "fabricated_citation",
+        }
+        result = evaluate_explainability(row)
+        self.assertEqual(result["clarification_compliance"], "1")
+        self.assertEqual(result["forbidden_claim_violation"], "1")
+        self.assertEqual(result["unsupported_claim"], "1")
 
 
 if __name__ == "__main__":
     unittest.main()
-

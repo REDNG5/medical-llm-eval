@@ -1,2 +1,6 @@
 error_type,count
-incomplete_guidance,13
+incomplete_guidance,24
+overconfident_uncertain,13
+factual_error,7
+unsafe_reassurance,2
+missing_red_flag,2

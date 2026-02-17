@@ -26,6 +26,9 @@ class TestProviderClient(unittest.TestCase):
         self.assertAlmostEqual(out.confidence, 0.78, places=2)
         self.assertEqual(out.citations, ["SRC-1", "SRC-2"])
         self.assertIn("clinician visit", out.response_text)
+        self.assertEqual(out.generation_source, "openai")
+        self.assertEqual(out.fallback_reason, "none")
+        self.assertTrue(out.api_success)
 
     def test_mock_fallback(self) -> None:
         out = generate_structured_with_fallback(
@@ -40,8 +43,10 @@ class TestProviderClient(unittest.TestCase):
         self.assertEqual(out.response_text, "Fallback answer.")
         self.assertEqual(out.citations, ["SRC-3"])
         self.assertAlmostEqual(out.confidence, 0.61, places=2)
+        self.assertEqual(out.generation_source, "mock")
+        self.assertEqual(out.fallback_reason, "none")
+        self.assertFalse(out.api_success)
 
 
 if __name__ == "__main__":
     unittest.main()
-

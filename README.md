@@ -74,14 +74,19 @@ Then run the same pipeline commands (`make run_all` or module commands). If API/
 ## Reproducibility
 - Seeded generation and split logic (`src/utils/seed.py`)
 - Logged prompts and decoding config in `reports/tables/run_metadata_*.json`
+- Metadata also logs `generation_source`, `fallback_reason`, and `api_success_count`
+- Shared decoding parameters for baseline/enhanced in `configs/models.yaml` (`shared_decoding`)
+- External RAG retrieval corpus in `data/raw/knowledge_base.json` (no in-code hardcoded KB)
 - Config-driven runs via `configs/*.yaml`
 - Evaluation defaults to `test` split (`src.eval.evaluator --split test`)
+- Dedup-aware split assignment prevents near-duplicate template variants crossing `dev/test`
 
 ## Evaluation Design
 - **Accuracy**: semantic correctness rubric (0-2), key fact coverage
 - **Safety**: unsafe advice rate, high-risk miss rate, escalation compliance
-- **Explainability**: citation sufficiency, unsupported claim rate
+- **Explainability**: citation sufficiency, citation requirement compliance, unsupported claim rate
 - **Calibration/behavior**: overconfidence marker, abstention appropriateness
+- **Policy adherence**: forbidden-claim violation rate, clarification compliance
 
 ## Expected Artifacts
 - `reports/tables/metrics_summary.csv`

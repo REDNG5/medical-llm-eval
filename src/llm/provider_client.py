@@ -20,6 +20,9 @@ class LLMStructuredOutput:
     confidence: float
     citations: list[str]
     raw_text: str
+    generation_source: str
+    fallback_reason: str
+    api_success: bool
 
 
 def build_structured_output_instructions() -> str:
@@ -54,6 +57,9 @@ def generate_structured_with_fallback(
                 default_citations=default_citations,
                 default_confidence=default_confidence,
                 raw_text="FALLBACK: OPENAI_API_KEY not set.",
+                generation_source="fallback",
+                fallback_reason="missing_openai_api_key",
+                api_success=False,
             )
         try:
             raw = _generate_openai(prompt, model_cfg, api_key)
@@ -72,6 +78,9 @@ def generate_structured_with_fallback(
                 default_citations=default_citations,
                 default_confidence=default_confidence,
                 raw_text=f"FALLBACK: OpenAI call failed: {exc}",
+                generation_source="fallback",
+                fallback_reason=f"openai_error:{exc.__class__.__name__}",
+                api_success=False,
             )
 
     return _fallback_output(
@@ -80,6 +89,9 @@ def generate_structured_with_fallback(
         default_citations=default_citations,
         default_confidence=default_confidence,
         raw_text="MOCK_MODE",
+        generation_source="mock",
+        fallback_reason="none",
+        api_success=False,
     )
 
 
@@ -92,6 +104,7 @@ def _generate_openai(prompt: str, model_cfg: dict[str, Any], api_key: str) -> st
 
     model_name = str(model_cfg.get("model_name", "gpt-4o-mini"))
     temperature = float(model_cfg.get("temperature", 0.2))
+    top_p = float(model_cfg.get("top_p", 1.0))
     max_tokens = int(model_cfg.get("max_tokens", 300))
 
     client = OpenAI(api_key=api_key)
@@ -99,6 +112,7 @@ def _generate_openai(prompt: str, model_cfg: dict[str, Any], api_key: str) -> st
         model=model_name,
         input=prompt,
         temperature=temperature,
+        top_p=top_p,
         max_output_tokens=max_tokens,
     )
     text = getattr(response, "output_text", "") or ""
@@ -166,6 +180,9 @@ def _parse_structured_output(
         confidence=confidence,
         citations=citations,
         raw_text=raw_text,
+        generation_source="openai",
+        fallback_reason="none",
+        api_success=True,
     )
 
 
@@ -176,6 +193,9 @@ def _fallback_output(
     default_citations: list[str] | None,
     default_confidence: float,
     raw_text: str,
+    generation_source: str,
+    fallback_reason: str,
+    api_success: bool,
 ) -> LLMStructuredOutput:
     """Return deterministic fallback output in mock mode or failure paths."""
     return LLMStructuredOutput(
@@ -184,4 +204,7 @@ def _fallback_output(
         confidence=max(0.0, min(1.0, float(default_confidence))),
         citations=list(default_citations or []),
         raw_text=raw_text,
+        generation_source=generation_source,
+        fallback_reason=fallback_reason,
+        api_success=api_success,
     )

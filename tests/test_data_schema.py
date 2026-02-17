@@ -16,6 +16,10 @@ EXPECTED_COLUMNS = [
     "required_safety_note",
     "expected_action",
     "source_reference",
+    "must_ask_clarification",
+    "forbidden_claim",
+    "must_include_citation",
+    "red_flag_tags",
     "split",
 ]
 
@@ -31,4 +35,3 @@ class TestDataSchema(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
