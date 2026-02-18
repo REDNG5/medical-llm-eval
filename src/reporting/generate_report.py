@@ -6,6 +6,7 @@ import argparse
 from datetime import date
 from pathlib import Path
 
+from src.eval.error_taxonomy import TAXONOMY
 from src.utils.io import ensure_dir, load_yaml, read_csv
 
 
@@ -45,6 +46,118 @@ def _safe_int(value: str | int | None, default: int = 0) -> int:
         return default
 
 
+def _truncate(text: str, max_len: int = 360) -> str:
+    clean = " ".join((text or "").strip().split())
+    if len(clean) <= max_len:
+        return clean
+    return clean[: max_len - 3].rstrip() + "..."
+
+
+def _parse_tags(raw: str) -> list[str]:
+    return [t.strip() for t in (raw or "").split(";") if t.strip()]
+
+
+def _tag_severity(tag: str) -> int:
+    weights = {
+        "missing_red_flag": 5,
+        "unsafe_reassurance": 5,
+        "factual_error": 4,
+        "unsupported_claim": 4,
+        "overconfident_uncertain": 3,
+        "incomplete_guidance": 2,
+    }
+    return weights.get(tag, 1)
+
+
+def _choose_primary_tag(enhanced_tags: list[str], baseline_tags: list[str]) -> str:
+    candidates = enhanced_tags or baseline_tags
+    if not candidates:
+        return "incomplete_guidance"
+    return sorted(candidates, key=_tag_severity, reverse=True)[0]
+
+
+def _build_failure_case_section(
+    *,
+    tables_dir: str,
+    eval_rows: list[dict[str, str]],
+    eval_split: str,
+    max_cases: int = 5,
+    min_cases: int = 3,
+) -> str:
+    suffix = eval_split if eval_split in {"dev", "test", "all"} else "test"
+    baseline_path = Path(tables_dir) / f"per_sample_eval_baseline_{suffix}.csv"
+    enhanced_path = Path(tables_dir) / f"per_sample_eval_enhanced_{suffix}.csv"
+    if not baseline_path.exists() or not enhanced_path.exists():
+        return (
+            "## Failure Case Cards\n"
+            "- Not available: missing per-sample evaluation files for baseline/enhanced.\n"
+        )
+
+    baseline_rows = read_csv(baseline_path)
+    enhanced_rows = read_csv(enhanced_path)
+    base_by_id = {row.get("sample_id", ""): row for row in baseline_rows}
+    enh_by_id = {row.get("sample_id", ""): row for row in enhanced_rows}
+    eval_by_id = {row.get("sample_id", ""): row for row in eval_rows}
+
+    candidates: list[tuple[int, str]] = []
+    for sample_id, enh in enh_by_id.items():
+        base = base_by_id.get(sample_id)
+        ref = eval_by_id.get(sample_id, {})
+        if not base or not ref:
+            continue
+        enh_tags = _parse_tags(enh.get("error_tags", ""))
+        base_tags = _parse_tags(base.get("error_tags", ""))
+        if not enh_tags and not base_tags:
+            continue
+
+        persistent = len(set(enh_tags) & set(base_tags))
+        score = sum(_tag_severity(tag) for tag in enh_tags) + persistent
+        if enh.get("high_risk_miss", "0") == "1" or enh.get("unsafe_advice", "0") == "1":
+            score += 3
+        if enh.get("semantic_score", "0") == "0":
+            score += 2
+        candidates.append((score, sample_id))
+
+    candidates.sort(key=lambda x: (-x[0], x[1]))
+    chosen_ids = [sample_id for _, sample_id in candidates[:max_cases]]
+
+    if len(chosen_ids) < min_cases:
+        # Backfill with baseline-only failures to keep 3-5 cards.
+        for _, sample_id in candidates[max_cases:]:
+            if sample_id not in chosen_ids:
+                chosen_ids.append(sample_id)
+            if len(chosen_ids) >= min_cases:
+                break
+
+    if not chosen_ids:
+        return "## Failure Case Cards\n- No failure cases detected on this split.\n"
+
+    lines = ["## Failure Case Cards", ""]
+    for idx, sample_id in enumerate(chosen_ids, start=1):
+        base = base_by_id[sample_id]
+        enh = enh_by_id[sample_id]
+        ref = eval_by_id.get(sample_id, {})
+        base_tags = _parse_tags(base.get("error_tags", ""))
+        enh_tags = _parse_tags(enh.get("error_tags", ""))
+        primary_tag = _choose_primary_tag(enh_tags, base_tags)
+        taxonomy = TAXONOMY.get(primary_tag, {})
+        root_cause = taxonomy.get("likely_cause", "Multi-factor prompt/retrieval/policy mismatch.")
+        remediation = taxonomy.get("remediation_action", "Refine prompts and rules; add targeted tests.")
+
+        lines.append(f"### Case {idx} ({sample_id})")
+        lines.append(f"- Query: {_truncate(ref.get('user_query', ''))}")
+        lines.append(f"- Reference: {_truncate(ref.get('reference_answer', ''))}")
+        lines.append(f"- Baseline Output: {_truncate(base.get('response_text', ''))}")
+        lines.append(f"- Enhanced Output: {_truncate(enh.get('response_text', ''))}")
+        lines.append(f"- Baseline Error Tags: {', '.join(base_tags) if base_tags else 'none'}")
+        lines.append(f"- Enhanced Error Tags: {', '.join(enh_tags) if enh_tags else 'none'}")
+        lines.append(f"- Root Cause: {_truncate(root_cause, max_len=220)}")
+        lines.append(f"- Fix Recommendation: {_truncate(remediation, max_len=220)}")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def generate_reports(
     tables_dir: str,
     reports_dir: str,
@@ -73,6 +186,11 @@ def generate_reports(
     high_risk_miss_enh = _to_float(enh.get("high_risk_miss_rate", "0"))
     citation_base = _to_float(base.get("citation_sufficiency_rate", "0"))
     citation_enh = _to_float(enh.get("citation_sufficiency_rate", "0"))
+    failure_case_section = _build_failure_case_section(
+        tables_dir=tables_dir,
+        eval_rows=eval_rows,
+        eval_split=eval_split,
+    )
 
     out_dir = ensure_dir(reports_dir)
     final_path = out_dir / "final_report.md"
@@ -110,6 +228,8 @@ Date: {date.today().isoformat()}
 ## Slice Highlights
 - Total slice rows: {len(slice_rows)}
 - Review `reports/tables/slice_metrics.csv` for breakdown by `risk_level` and `scenario_type`.
+
+{failure_case_section}
 
 ## Limitations
 - Uses synthetic/semi-synthetic data and deterministic simulators.
